@@ -38,7 +38,7 @@ int main(){
                 int numBloque;
                 cout<<"Ingrese un numero de sector => ";
                 cin>>numBloque;
-                //myDiskController.printBloque(numBloque);
+                myDiskController.printBloque(numBloque);
             }else if (opc2 == 4) {
                 myDiskController.disco->showInfoDisco();
             }

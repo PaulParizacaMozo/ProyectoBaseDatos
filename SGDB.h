@@ -80,10 +80,9 @@ public:
         
 
         for (int i=1; i<(this->diskController->sizeBloque / sizeRegistro); i++) {
-
-        char marcador;
-        marcador = *reinterpret_cast<char *>(frame + ((i+1)*sizeRegistro)-5);
-        //cout<<"aqui marcador ->"<<marcador<<endl;
+          char marcador;
+          marcador = *reinterpret_cast<char *>(frame + ((i+1)*sizeRegistro)-5);
+          //cout<<"aqui marcador ->"<<marcador<<endl;
           if (marcador != '*') {
             for(auto& i : this->diskController->info){
               if (get<1>(i)=="int"){
@@ -113,6 +112,69 @@ public:
 
         // file.close();
     }
+    void search(string atributo, int objetivo){
+        this->diskController->tableToVector("titanic");     
+        int aux=0;
+        for(auto& i : this->diskController->info){
+          if(get<0>(i) != atributo){
+            aux += get<2>(i);
+          }
+          else {
+            break;
+          }
+         }
+
+        //cout<<"aux-> "<<aux;
+
+        int comprobarRegistro; 
+        int sizeRegistro = 0;
+        for(auto& i : this->diskController->info){
+            sizeRegistro += get<2>(i);
+        }
+
+        for (int i=1; i<=41; i++) {
+          char * frame = bufferManager->getPageOfBuuferPool(i)->data;
+          ifstream file;
+          file.open("disk/bloque"+to_string(i)+".bin",ios::in | ios::binary);
+          file.read(frame,this->diskController->sizeBloque);
+          
+          char marcador;
+          marcador = *reinterpret_cast<char *>(frame + sizeRegistro-5);
+          int byte = 0;
+          if (marcador != '*') {
+            byte+=(sizeRegistro);
+          }
+
+          for (int i=1; i<(this->diskController->sizeBloque / sizeRegistro); i++) {
+            char marcador;
+
+            marcador = *reinterpret_cast<char *>(frame + ((i+1)*sizeRegistro)-5);
+            //cout<<"aqui marcador ->"<<marcador<<endl;
+            if (marcador != '*') {
+              int pru = get_integer(frame, byte, aux);
+              if(pru == objetivo){
+                for(auto& i : this->diskController->info){
+                  if (get<1>(i)=="int"){
+                      fun_int(frame,byte,mytipos::_INT);
+                  } else if(get<1>(i)=="double"){
+                      fun_double(frame,byte,mytipos::_DOUBLE);
+                  } else if(get<1>(i)=="str"){
+                      fun_char(frame,byte,get<2>(i));
+                  }
+                }
+                cout<<"\n";
+              }
+              else {
+                byte += sizeRegistro;
+              }
+              //cout<<"\n";
+            }
+          }
+          file.close();
+        }
+
+
+    }
 
     void showTable(string nameTable){
         int numRegistros;
@@ -124,6 +186,12 @@ public:
         for (int i = 1; i<=41; i++) {
         mostrarPage(i); 
         }
+    }
+    int get_integer(char *frame, int &byte, int sizeBytes)
+    {
+        int pru;
+        pru = *reinterpret_cast<int *>(frame + byte + sizeBytes);
+        return pru;
     }
     
     void fun_int(char *frame, int &byte, int sizeBytes)

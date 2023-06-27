@@ -52,6 +52,7 @@ int main(){
             cout<<"[4] Insert 1 registro n\n"; // ident si es fijo o variable de acuerdo al esquema de tablas, e insertarlo en binario
             cout<<"[5] Delete 1 registro n\n";
             cout<<"[6] SELECT * FROM titanic\n";
+            cout<<"[7] SELECT * FROM titanic where id = n\n";
             cin>>opc2;
             cin.ignore();
 
@@ -78,6 +79,15 @@ int main(){
                 //cout<<"\n---\n";
             } else if(opc2==6){
                 sistema.showTable("titanic");
+                sistema.bufferManager->showPageTable();
+            } else if(opc2==7){
+                string prompt, prompt2;
+                cout<<"Ingrese el nombre del atributo -> ";
+                getline(cin,prompt);
+                cout<<"Ingrese el objetivo -> ";
+                getline(cin,prompt2);
+
+                sistema.search(prompt,stoi(prompt2));
                 sistema.bufferManager->showPageTable();
             }
 

@@ -325,18 +325,13 @@ void setDataInBloques(int sizeRegistro){
         cout<<"\n"<<lineas::linea100<<lineas::linea50<<"\n";
     }
 
-    void printBloque(int numSector){
-        cout<<"\n"<<lineas::drawLinea(75)<<" | BLOQUE "<<numSector<<" | "<<lineas::drawLinea(75)<<"\n";
+    void printBloque(int numBloque){
+        cout<<"\n"<<lineas::drawLinea(75)<<" | BLOQUE "<<numBloque<<" | "<<lineas::drawLinea(75)<<"\n";
         //this->disco->sectores[numSector-1].showInfoSector(); // Imprime info: en que plato, superficie, pista esta
         
-        int findNumBloqueQueApuntaAlSector = std::ceil(static_cast<double>(numSector) / this->numSectoresPorBloque);
-        int numSectorDentroDelBloque = ((numSector-1) % this->numSectoresPorBloque == 0) ? ((numSector-1)/this->numSectoresPorBloque) : ((numSector-1)/this->numSectoresPorBloque)+1;;
-        int posicionDelSectorEnArchivo = numSectorDentroDelBloque * this->disco->capacidadDelSector;
-        // cout<<"findNumBloqueQueApuntaAlSector: "<<findNumBloqueQueApuntaAlSector<<"\n";
         
         cout<<"DATA:\n"<<lineas::linea100<<lineas::linea50<<"\n";
-        ifstream bloqueUbicado("disk/bloque"+std::to_string(findNumBloqueQueApuntaAlSector)+".bin",ios::binary);
-        bloqueUbicado.seekg(posicionDelSectorEnArchivo);
+        ifstream bloqueUbicado("disk/bloque"+std::to_string(numBloque)+".bin",ios::binary);
         char c; int contadorFila = 1;
         while(!bloqueUbicado.eof() ){
             bloqueUbicado.read(static_cast<char*>(&c),sizeof(char));
@@ -348,6 +343,10 @@ void setDataInBloques(int sizeRegistro){
         bloqueUbicado.close();
 
         cout<<"\n"<<lineas::linea100<<lineas::linea50<<"\n";
+    }
+
+    void printRegistroUbicacion(int id){
+
     }
 
 };

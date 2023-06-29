@@ -345,8 +345,4 @@ void setDataInBloques(int sizeRegistro){
         cout<<"\n"<<lineas::linea100<<lineas::linea50<<"\n";
     }
 
-    void printRegistroUbicacion(int id){
-
-    }
-
 };

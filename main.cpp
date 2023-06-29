@@ -39,6 +39,12 @@ int main(){
                 cout<<"Ingrese un numero de sector => ";
                 cin>>numBloque;
                 myDiskController.printBloque(numBloque);
+            }else if(opc2==3){
+                int registro,ubi;
+                cout<<"Ingrese el numero de registro => ";
+                cin>>registro;
+                ubi = sistema.printUbicacionRegistro(registro);
+                myDiskController.printBloque(ubi);
             }else if (opc2 == 4) {
                 myDiskController.disco->showInfoDisco();
             }
@@ -52,7 +58,7 @@ int main(){
             cout<<"[4] Insert 1 registro n\n"; // ident si es fijo o variable de acuerdo al esquema de tablas, e insertarlo en binario
             cout<<"[5] Delete 1 registro n\n";
             cout<<"[6] SELECT * FROM titanic\n";
-            cout<<"[7] SELECT * FROM titanic where id = n\n";
+            cout<<"[7] SELECT * FROM titanic where atributo = n\n";
             cin>>opc2;
             cin.ignore();
 

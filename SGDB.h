@@ -172,8 +172,6 @@ public:
           }
           file.close();
         }
-
-
     }
 
     void showTable(string nameTable){
@@ -225,5 +223,65 @@ public:
             byte += 1;
         }
         std::cout << "|";
+    }
+
+    int printUbicacionRegistro(int objetivo){
+        this->diskController->tableToVector("titanic");     
+
+        int sizeRegistro = 0;
+        for(auto& i : this->diskController->info){
+            sizeRegistro += get<2>(i);
+        }
+
+        for (int i=1; i<=41; i++) {
+          int bloque = i-1;
+          char * frame = bufferManager->getPageOfBuuferPool(i)->data;
+          ifstream file;
+          file.open("disk/bloque"+to_string(i)+".bin",ios::in | ios::binary);
+          file.read(frame,this->diskController->sizeBloque);
+          
+          char marcador;
+          marcador = *reinterpret_cast<char *>(frame + sizeRegistro-5);
+          int byte = 0;
+          if (marcador != '*') {
+            byte+=(sizeRegistro);
+          }
+
+          for (int i=1; i<(this->diskController->sizeBloque / sizeRegistro); i++) {
+            char marcador;
+
+            marcador = *reinterpret_cast<char *>(frame + ((i+1)*sizeRegistro)-5);
+            //cout<<"aqui marcador ->"<<marcador<<endl;
+            if (marcador != '*') {
+              int pru = get_integer(frame, byte, 0);
+              if(pru == objetivo){
+                cout<<" \nRegistro:\n";
+                for(auto& i : this->diskController->info){
+                  if (get<1>(i)=="int"){
+                      fun_int(frame,byte,mytipos::_INT);
+                  } else if(get<1>(i)=="double"){
+                      fun_double(frame,byte,mytipos::_DOUBLE);
+                  } else if(get<1>(i)=="str"){
+                      fun_char(frame,byte,get<2>(i));
+                  }
+                }
+                cout<<"\n";
+
+                int nSector = ((i*sizeRegistro) % disco->capacidadDelSector == 0) ? ((i*sizeRegistro)/disco->capacidadDelSector) : ((i*sizeRegistro)/disco->capacidadDelSector)+1;
+                nSector = nSector+(8*bloque);
+
+                cout<<"\n"<<lineas::drawLinea(75)<<" | INFO SECTOR | "<<lineas::drawLinea(75)<<"\n";
+                this->disco->sectores[nSector-1].showInfoSector(); // Imprime info: en que plato, superficie, pista esta
+                return bloque+1; 
+              }
+              else {
+                byte += sizeRegistro;
+              }
+              //cout<<"\n";
+            }
+          }
+          file.close();
+        }
+        return 0;
     }
 };

@@ -1,5 +1,5 @@
 #pragma once
-#include "Disco.h"
+#include "HeadersHDD/Disco.h"
 #include "DiskController.h"
 #include "BufferManager.h"
 #include "tipos.cpp"
@@ -132,7 +132,7 @@ public:
             sizeRegistro += get<2>(i);
         }
 
-        for (int i=1; i<=41; i++) {
+        for (int i=1; i<=45; i++) {
           char * frame = bufferManager->getPageOfBuuferPool(i)->data;
           ifstream file;
           file.open("disk/bloque"+to_string(i)+".bin",ios::in | ios::binary);
@@ -176,12 +176,12 @@ public:
 
     void showTable(string nameTable){
         int numRegistros;
-        this->diskController->tableToVector("titanic");
+        this->diskController->tableToVector(nameTable);
         ifstream numRegistros_dictionary("dictionary/numRegistros.bin", std::ios::binary);
         numRegistros_dictionary.read(reinterpret_cast<char*>(&numRegistros), sizeof(int));
         numRegistros_dictionary.close(); 
 
-        for (int i = 1; i<=41; i++) {
+        for (int i = 1; i<=diskController->NumBLoquesEnUso; i++) {
         mostrarPage(i); 
         }
     }
@@ -233,7 +233,7 @@ public:
             sizeRegistro += get<2>(i);
         }
 
-        for (int i=1; i<=41; i++) {
+        for (int i=1; i<=diskController->NumBLoquesEnUso; i++) {
           int bloque = i-1;
           char * frame = bufferManager->getPageOfBuuferPool(i)->data;
           ifstream file;
@@ -251,11 +251,9 @@ public:
             char marcador;
 
             marcador = *reinterpret_cast<char *>(frame + ((i+1)*sizeRegistro)-5);
-            //cout<<"aqui marcador ->"<<marcador<<endl;
             if (marcador != '*') {
               int pru = get_integer(frame, byte, 0);
               if(pru == objetivo){
-                cout<<" \nRegistro:\n";
                 for(auto& i : this->diskController->info){
                   if (get<1>(i)=="int"){
                       fun_int(frame,byte,mytipos::_INT);
@@ -265,19 +263,15 @@ public:
                       fun_char(frame,byte,get<2>(i));
                   }
                 }
-                cout<<"\n";
 
                 int nSector = ((i*sizeRegistro) % disco->capacidadDelSector == 0) ? ((i*sizeRegistro)/disco->capacidadDelSector) : ((i*sizeRegistro)/disco->capacidadDelSector)+1;
                 nSector = nSector+(8*bloque);
 
-                cout<<"\n"<<lineas::drawLinea(75)<<" | INFO SECTOR | "<<lineas::drawLinea(75)<<"\n";
-                this->disco->sectores[nSector-1].showInfoSector(); // Imprime info: en que plato, superficie, pista esta
                 return bloque+1; 
               }
               else {
                 byte += sizeRegistro;
               }
-              //cout<<"\n";
             }
           }
           file.close();

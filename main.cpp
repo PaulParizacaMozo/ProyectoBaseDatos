@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstring>
 #include "DiskController.h"
-#include "Disco.h"
+#include "HeadersHDD/Disco.h"
 #include "SGDB.h"
 using namespace std;
 

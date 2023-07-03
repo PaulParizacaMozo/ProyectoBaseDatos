@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstring>
+#include <string>
 #include "DiskController.h"
 #include "HeadersHDD/Disco.h"
 #include "SGDB.h"
@@ -77,15 +78,24 @@ int main(){
                 string prompt;
                 getline(cin,prompt);
                 sistema.mostrarPage(stoi(prompt));
-                sistema.bufferManager->showPageTable();
+                sistema.bufferManager->showpageTableMRU();
                 //cout<<"MUESTRA BLOQUE 100 ----\n";
                 //sistema.mostrarPage(40);
                 //sistema.mostrarPage(41);
                 //sistema.mostrarPage(42);
                 //cout<<"\n---\n";
+            } else if(opc2==4){
+                sistema.insertarRegistro();
+                sistema.bufferManager->showpageTableMRU();
+            } else if(opc2==5){
+                string prompt;  
+                cout<<"Ingrese el objetivo -> ";
+                getline(cin,prompt);
+                sistema.deleteRegistro(stoi(prompt));
+                sistema.bufferManager->showpageTableMRU();
             } else if(opc2==6){
                 sistema.showTable("titanic");
-                sistema.bufferManager->showPageTable();
+                sistema.bufferManager->showpageTableMRU();
             } else if(opc2==7){
                 string prompt, prompt2;
                 cout<<"Ingrese el nombre del atributo -> ";
@@ -94,7 +104,7 @@ int main(){
                 getline(cin,prompt2);
 
                 sistema.search(prompt,stoi(prompt2));
-                sistema.bufferManager->showPageTable();
+                sistema.bufferManager->showpageTableMRU();
             }
 
         } else if(opc==0){

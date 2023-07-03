@@ -66,7 +66,7 @@ public:
       ifstream archivo("disk/bloque"+to_string(nBloque)+".bin", std::ios::binary);
         for (int i=1; i<=numSectoresPorBloque; i++) {
           int nSector = numSectoresPorBloque*(nBloque-1) + i;
-          cout<<"nSector -> "<<nSector<<endl;
+          //cout<<"nSector -> "<<nSector<<endl;
           int _pista,_superf,_plat;
           _pista = ((nSector) % disco->numSectoresPorPista == 0) ? ((nSector)/disco->numSectoresPorPista) : ((nSector)/disco->numSectoresPorPista)+1;
           _superf = (_pista % disco->numPistasPorSuperficie == 0) ? (_pista/disco->numPistasPorSuperficie) : (_pista/disco->numPistasPorSuperficie)+1;
@@ -80,6 +80,7 @@ public:
           output.close();
         }
       archivo.close();
+      cout<<"Se actualizo de forma correcta el bloque "<<nBloque<<endl;
     }
 
     void tableToVector(string nameTable){
@@ -228,7 +229,7 @@ void setDataInBloques(int sizeRegistro){
         numRegistros_dictionary.close();
 
         ifstream file("titanicbinario.bin", std::ios::binary);
-        //ofstream schemaBloques("schemaBloquesFijos.bin", std::ios::binary);
+        //ofstream schemaBloques("dictionary/schemaBloquesFijos.bin", std::ios::binary);
         
         file.seekg(0,ios::end);
         int sizeFile = file.tellg();
@@ -240,10 +241,11 @@ void setDataInBloques(int sizeRegistro){
 
         while((contAux < almacenamientoTotal) && (contadorRegistros < numRegistros)){ //sizeFile
             ofstream bloque("disk/bloque"+std::to_string(contador)+".bin", std::ios::binary);
+            char marcador = '-'; //puntero inicial de la freelist que se inicializara en 0
+            bloque.write(reinterpret_cast<char*>(&marcador), sizeof(char));
             bloque.seekp(sizeRegistro-sizeof(int)-sizeof(char));
 
             int freelist = 0; //puntero inicial de la freelist que se inicializara en 0
-            char marcador = '-'; //puntero inicial de la freelist que se inicializara en 0
             bloque.write(reinterpret_cast<char*>(&marcador), sizeof(char));
             bloque.write(reinterpret_cast<char*>(&freelist), sizeof(int));
             contadorBytesTotal = sizeRegistro*2;
@@ -260,7 +262,7 @@ void setDataInBloques(int sizeRegistro){
 
             contAux += (contadorBytesTotal-sizeRegistro);
             //int numRegistrosEnBloque = (contAux / (sizeRegistro*contador)) - 1;
-            //schemaBloques.write(reinterpret_cast<char*>(&numRegistrosEnBloque), sizeof(int));
+            //schemaBloques.write(reinterpret_cast<char*>(&contadorRegistros), sizeof(int));
             
             char * buffer = new char[sizeBloque-contadorBytesTotal+sizeRegistro];
             // Rellenar el buffer con datos 
@@ -284,17 +286,17 @@ void setDataInBloques(int sizeRegistro){
         //schemaBloques.close();
     }
 
-    void readSchemaBloquesFijos(){
-        int numRegistros;
-        ifstream schemaBloques("schemaBloquesFijos.bin", std::ios::binary);
-        int i = 1;
-        while( i <= this->nTotalBloques){
-            schemaBloques.read(reinterpret_cast<char*>(&numRegistros), sizeof(int));
-            cout<<"bloque "<<i<<" => "<<numRegistros<<"\n";
-            i++;
-        }
-        schemaBloques.close();
-    }
+    //void readSchemaBloquesFijos(){
+    //    int numRegistros;
+    //    ifstream schemaBloques("dictionary/schemaBloquesFijos.bin", std::ios::binary);
+    //    int i = 1;
+    //    while( i <= this->nTotalBloques){
+    //        schemaBloques.read(reinterpret_cast<char*>(&numRegistros), sizeof(int));
+    //        cout<<"bloque "<<i<<" => "<<numRegistros<<"\n";
+    //        i++;
+    //    }
+    //    schemaBloques.close();
+    //}
 
     void convertCSV_inTuplas(string fileAimportar, string newfile,int natributos){
         cout<<"size -> "<<natributos<<endl;

@@ -1,4 +1,5 @@
 #pragma once
+#include <ios>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -18,6 +19,7 @@ public:
     int numSectoresPorBloque;
     int NumBLoquesEnUso;
     vector<tuple<string,string,int>> info;
+    string nameTable;
     
     DiskController(Disco* disco){
         this->disco = disco;
@@ -33,10 +35,7 @@ public:
                 ofstream archivo("disk/"+name_bloque+".bin", std::ios::binary);
 
                 char* buffer = new char[sizeBloque];
-
-                // std::ofstream archivo("datos.bin", std::ios::binary);
                 if (!archivo) { std::cout << "No se pudo abrir el archivo." << std::endl; return; }
-                
                 int _pista,_superf,_plat;
                 for(int i=0; i<numSectoresPorBloque;i++){
                   _pista = ((sectorActual) % disco->numSectoresPorPista == 0) ? ((sectorActual)/disco->numSectoresPorPista) : ((sectorActual)/disco->numSectoresPorPista)+1;
@@ -56,12 +55,14 @@ public:
             }
             std::cout << "Se han generado los bloques correctamente" << std::endl;
         }
-
     }
+
     ~DiskController(){
+        //Al finalizar el programa los bloques virtuales desaparecen
         system("rm -r disk");
     }
 
+    //Escribe el bloque virtual al disco fisico
     void bloqueASector(int nBloque){
       ifstream archivo("disk/bloque"+to_string(nBloque)+".bin", std::ios::binary);
         for (int i=1; i<=numSectoresPorBloque; i++) {
@@ -80,10 +81,10 @@ public:
           output.close();
         }
       archivo.close();
-      cout<<"Se actualizo de forma correcta el bloque "<<nBloque<<endl;
     }
 
-    void tableToVector(string nameTable){
+    //Transforma la informacion de una tabla en un vector para mejor manejo
+    void tableToVector(){ //cambios
         this->info.clear();
         ifstream data;
         data.open("esquema",ios::in);
@@ -130,11 +131,13 @@ public:
         data.close();
     }
 
-    void uploadTableToDisk(string fileToImport, string tablaName){ //(const char * tablaNameFile, int sizeFile)
-
-        tableToVector(tablaName);
+    
+    //Importa la tabla al disco
+    void uploadTableToDisk(string fileToImport, string tablaName){ 
+        tableToVector();//cambios
         cout<<"size -> "<<info.size()<<endl;
-        convertCSV_inTuplas(fileToImport,tablaName,(int)info.size());
+        cout<<"name -> "<<tablaName<<endl;
+        convertCSV_inTuplas(fileToImport,nameTable,(int)info.size()); //cambios
 
         const char* carpetaDisco = "disco\\";
 
@@ -145,7 +148,8 @@ public:
         float decimal;
         double decimalGrande;
 
-        ifstream archivoTupla("titanic");
+        ifstream archivoTupla(nameTable); //cambios
+        //ifstream archivoTupla("titanic");
         ofstream salida("titanicbinario.bin", std::ios::binary);
         
         char c;
@@ -188,17 +192,20 @@ public:
             numRegistrosDeLaTabla++;
         }
 
-        cout<<"\n-------numRegistrosDeLaTabla: "<<numRegistrosDeLaTabla<<"\n";
-        ofstream numRegistrosPorTabla_dictionary("dictionary/numRegistros.bin", std::ios::binary | std::ios::app);
-        numRegistrosPorTabla_dictionary.seekp(0,ios::end);
-        numRegistrosPorTabla_dictionary.write(reinterpret_cast<char*>(&numRegistrosDeLaTabla), sizeof(int));
-        numRegistrosPorTabla_dictionary.close();
+        //cout<<"\n-------numRegistrosDeLaTabla: "<<numRegistrosDeLaTabla<<"\n";
+        fstream dictionary1("dictionary/dictionary.bin",ios::in | ios::out | std::ios::binary);
+        int posicion = buscarTablaenDictionary(nameTable)+100;
+        //cout<<"Posicion -> "<<posicion<<endl;
+        //cout<<"NUMERO DE REGIS -> "<<numRegistrosDeLaTabla<<endl;
+        dictionary1.seekp(posicion);
+        dictionary1.write(reinterpret_cast<char*>(&numRegistrosDeLaTabla), sizeof(int));
+        dictionary1.close();
 
-        for ( auto& atributo : info ){
-            cout<<get<0>(atributo)<<"-"; 
-            cout<<get<1>(atributo)<<"-"; 
-            cout<<get<2>(atributo)<<"\n"; 
-        }
+        //for ( auto& atributo : info ){
+        //    cout<<get<0>(atributo)<<"-"; 
+        //    cout<<get<1>(atributo)<<"-"; 
+        //    cout<<get<2>(atributo)<<"\n"; 
+        //}
         
         archivoTupla.close();
         salida.close();
@@ -214,19 +221,54 @@ public:
             }
         }
         setDataInBloques(sizeRegistro);
-        //readSchemaBloquesFijos();
+    }
+
+    int buscarTablaenDictionary(string objetivo){
+        fstream dictionary("dictionary/dictionary.bin",ios::in | ios::out | std::ios::binary);
+        dictionary.seekg(0,ios::end);
+        int tamañoDictionary = dictionary.tellg();
+        dictionary.seekg(0,ios::beg);
+        int byte=12;//Ahi inician las tablas
+        while(byte<=tamañoDictionary){
+            dictionary.seekg(byte);
+            string temp = "";
+            char c;
+            for(int i = 0; i<100; i++){
+                dictionary.read(reinterpret_cast<char*>(&c), sizeof(c));
+                temp += c;
+            }
+            //cout<<temp;
+            string aux;
+            for (char ch : temp) {
+                if (!std::isspace(ch)) {
+                    aux += ch;
+                }
+            }
+            if(aux == nameTable){
+                dictionary.close();
+                return byte;
+            }
+            else{
+                byte += 116;
+            }
+        }
+        dictionary.close();
+        return 0;
     }
 
 void setDataInBloques(int sizeRegistro){
 
         int contador = 1;
+        int cnt = 1;
         int contadorBytesTotal;
         int contAux = 0;
         int numRegistros=0;
 
-        ifstream numRegistros_dictionary("dictionary/numRegistros.bin", std::ios::binary);
-        numRegistros_dictionary.read(reinterpret_cast<char*>(&numRegistros), sizeof(int));
-        numRegistros_dictionary.close();
+        fstream numRegistrosPorTabla_dictionary("dictionary/dictionary.bin",ios::in | ios::out | std::ios::binary);
+        int posicion = buscarTablaenDictionary(nameTable)+100;
+        numRegistrosPorTabla_dictionary.seekg(posicion);
+        numRegistrosPorTabla_dictionary.read(reinterpret_cast<char*>(&numRegistros), sizeof(int));
+        numRegistrosPorTabla_dictionary.close();
 
         ifstream file("titanicbinario.bin", std::ios::binary);
         //ofstream schemaBloques("dictionary/schemaBloquesFijos.bin", std::ios::binary);
@@ -238,9 +280,14 @@ void setDataInBloques(int sizeRegistro){
         int almacenamientoTotal = this->nTotalBloques*this->sizeBloque;
         
         int contadorRegistros = 0;
-
+        fstream _dictionary("dictionary/dictionary.bin",ios::in | ios::out | std::ios::binary);
+        _dictionary.seekg(4);
+        _dictionary.read(reinterpret_cast<char*>(&contador), sizeof(int));
+        contador++;
+        _dictionary.close();
         while((contAux < almacenamientoTotal) && (contadorRegistros < numRegistros)){ //sizeFile
-            ofstream bloque("disk/bloque"+std::to_string(contador)+".bin", std::ios::binary);
+            //cout<<"entro"<<endl;
+            ofstream bloque("disk/bloque"+to_string(contador)+".bin", std::ios::binary);
             char marcador = '-'; //puntero inicial de la freelist que se inicializara en 0
             bloque.write(reinterpret_cast<char*>(&marcador), sizeof(char));
             bloque.seekp(sizeRegistro-sizeof(int)-sizeof(char));
@@ -273,18 +320,95 @@ void setDataInBloques(int sizeRegistro){
             delete [] buffer;
 
             contAux += (sizeBloque-contadorBytesTotal+sizeRegistro);
-            cout<<"contAux: "<<contAux<<"\t\t";
+            //cout<<"contAux: "<<contAux<<"\t\t";
 
             bloque.close();
 
-            bloqueASector(contador);
+            bloqueASector(contador);        
             contador++;
-            
         }
+        contador--;
+            fstream dictionary("dictionary/dictionary.bin",ios::in | ios::out | std::ios::binary);
+            int inicioBLoque,finBLoque;
+            dictionary.seekp(0,ios::beg);
+            dictionary.seekg(4); 
+            dictionary.read(reinterpret_cast<char*>(&inicioBLoque), sizeof(int));
+            dictionary.seekp(0,ios::beg);
+
+            if(inicioBLoque == 0){
+                dictionary.seekp(0,ios::beg);
+                int posicion = buscarTablaenDictionary(nameTable)+104;
+                dictionary.seekp(posicion);
+                inicioBLoque++;
+                dictionary.write(reinterpret_cast<char*>(&inicioBLoque), sizeof(int));
+                dictionary.write(reinterpret_cast<char*>(&contador), sizeof(int));
+                dictionary.close();
+            }
+            else {
+                dictionary.seekp(0,ios::beg);
+                int posicion = buscarTablaenDictionary(nameTable)+104;
+                dictionary.seekp(posicion);
+                inicioBLoque++;
+                dictionary.write(reinterpret_cast<char*>(&inicioBLoque), sizeof(int));
+                dictionary.write(reinterpret_cast<char*>(&contador), sizeof(int));
+            dictionary.close();
+            }
+
+
+            fstream dictionary1("dictionary/dictionary.bin",ios::in | ios::out | std::ios::binary);
+            dictionary1.seekp(0,ios::beg);
+            dictionary1.seekp(4);
+            dictionary1.write(reinterpret_cast<char*>(&contador), sizeof(int));
+            dictionary1.close();
+
         file.close();
         this->NumBLoquesEnUso = contador;
         //schemaBloques.close();
     }
+
+void showDictionary(){
+    ifstream dictionary("dictionary/dictionary.bin",std::ios::binary);
+    dictionary.seekg(0,ios::end);
+    int tamañoDictionary = dictionary.tellg();
+    dictionary.seekg(0,ios::beg);
+    //cout<<"Size -> "<<tamañoDictionary<<endl;
+    int byte = 0;
+    int auxInt;
+    string auxStr;
+    dictionary.read(reinterpret_cast<char*>(&auxInt), sizeof(int));
+    cout<<"Numero total de bloques: "<<auxInt<<endl;
+    dictionary.read(reinterpret_cast<char*>(&auxInt), sizeof(int));
+    cout<<"Numero de bloques en uso: "<<auxInt<<endl;
+    dictionary.read(reinterpret_cast<char*>(&auxInt), sizeof(int));
+    cout<<"Numero de total de tablas: "<<auxInt<<endl;
+    byte=12;
+    while(byte<tamañoDictionary){
+        string temp = "";
+        char c;
+        for(int i = 0; i<100; i++){
+            dictionary.read(reinterpret_cast<char*>(&c), sizeof(c));
+            temp += c;
+        }
+        //cout<<temp;
+        string aux;
+        for (char ch : temp) {
+            if (!std::isspace(ch)) {
+                aux += ch;
+            }
+        }
+        cout<<" ->Tabla 1 : "<<aux<<endl;
+        dictionary.read(reinterpret_cast<char*>(&auxInt), sizeof(int));
+        cout<<"   Numero de total de registros: "<<auxInt<<endl;
+        dictionary.read(reinterpret_cast<char*>(&auxInt), sizeof(int));
+        cout<<"   Bloque inicial: "<<auxInt<<endl;
+        dictionary.read(reinterpret_cast<char*>(&auxInt), sizeof(int));
+        cout<<"   Bloque final: "<<auxInt<<endl;
+        dictionary.read(reinterpret_cast<char*>(&auxInt), sizeof(int));
+        cout<<"   Fijo o Variable: "<<auxInt<<endl;
+        byte+=116;
+    }
+    dictionary.close();
+}
 
     //void readSchemaBloquesFijos(){
     //    int numRegistros;
@@ -300,7 +424,7 @@ void setDataInBloques(int sizeRegistro){
 
     void convertCSV_inTuplas(string fileAimportar, string newfile,int natributos){
         cout<<"size -> "<<natributos<<endl;
-        tableToVector(newfile);
+        tableToVector();
         ifstream i(fileAimportar, ios::in); 
         ofstream f(newfile,ios::out); 
         bool reemplazarActivo = true;
@@ -315,7 +439,7 @@ void setDataInBloques(int sizeRegistro){
                         f<<'#';
                         word="";
                         indice++;
-                        if (indice >= natributos) { //natributos
+                        if (indice >= natributos) { //natributos//cambio
                             indice=0;
                             f<<'\n';
                         }

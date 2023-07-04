@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cstring>
 
 
 class SGDB
@@ -16,6 +17,7 @@ public:
     Disco *disco;
     DiskController *diskController;
     BufferManager *bufferManager;
+    int bloqueInicial,bloqueFinal;
 
     SGDB(Disco *disco, DiskController *diskController)
     {
@@ -40,7 +42,7 @@ public:
         getline(stream, word, ' ');
         string wor;
         cout << "Atributos:" << endl;
-        // titanic 12 passengerid,int,survived,int,Pclass,int,Name,str,90,Sex,str,6,age,double,SibSp,int,Parch,int,Ticket,str,20,Fare,double,Cabin,str,20,Embarked,str,1
+        // titanic 1 passengerid,int,survived,int,Pclass,int,Name,str,90,Sex,str,6,age,double,SibSp,int,Parch,int,Ticket,str,20,Fare,double,Cabin,str,20,Embarked,str,1
         // Muestra las columnas de las tablas
         stringstream stream1(word);
         cout << word << endl;
@@ -48,12 +50,56 @@ public:
         {
             file << "#" << wor;
         }
+        file<<"\n";
 
         file.close();
+
+        //Seteamos el nombre de la tabla y si es fijo o variable
+        ifstream data;
+        data.open("esquema",ios::in);
+        string linea;
+        while(getline(data,linea)){
+            stringstream stream(linea);
+            string word;
+            getline(stream,word,'#');
+            if (word == diskController->nameTable) {
+                break;
+            }
+        }
+
+        //Lleva a la memoria dinamica la ubicacion de los bytes por cada atributo
+        //cout<<linea<<endl;
+        stringstream stream2(linea);
+        string w1;
+        int inicializador = 0;
+        getline(stream2,w1,'#');
+        fstream dictionary("dictionary/dictionary.bin",ios::in | ios::out | ios::binary);
+            //Aumenta el numero de tablas
+            int nTablas;
+            dictionary.seekg(8);
+            dictionary.read(reinterpret_cast<char*>(&nTablas),sizeof(int));
+            dictionary.seekp(8);
+            cout<<"tablas-> "<<nTablas<<endl;
+            nTablas++;
+            dictionary.write(reinterpret_cast<char*>(&nTablas), sizeof(int));
+            cout<<"tablas-> "<<nTablas<<endl;
+            dictionary.seekp(0,ios::end);
+            w1.resize(100, ' ');
+            dictionary.write(w1.c_str(), w1.length());
+            dictionary.write(reinterpret_cast<char*>(&inicializador), sizeof(int));
+            dictionary.write(reinterpret_cast<char*>(&inicializador), sizeof(int));
+            dictionary.write(reinterpret_cast<char*>(&inicializador), sizeof(int));
+            getline(stream2,w1,'#');
+            inicializador = stoi(w1);
+            dictionary.write(reinterpret_cast<char*>(&inicializador), sizeof(int));
+        dictionary.close();
+
+        data.close();
     }
 
     void mostrarPage(int pageId) { // MostrarBloque
-        this->diskController->tableToVector("titanic");     
+        this->diskController->tableToVector();     
+        //this->diskController->tableToVector("titanic");     
         int comprobarRegistro; 
         int sizeRegistro = 0;
         for(auto& i : this->diskController->info){
@@ -107,7 +153,18 @@ public:
         file.close();
     }
     void search(string atributo, int objetivo){
-        this->diskController->tableToVector("titanic");     
+        //this->diskController->tableToVector("titanic");     
+        this->diskController->tableToVector();     
+        int posicion = this->diskController->buscarTablaenDictionary(this->diskController->nameTable);
+        posicion += 104;
+        fstream dictionary("dictionary/dictionary.bin",ios::in | ios::out | std::ios::binary);
+        dictionary.seekg(posicion);
+        dictionary.read(reinterpret_cast<char*>(&bloqueInicial), sizeof(int));
+        dictionary.read(reinterpret_cast<char*>(&bloqueFinal), sizeof(int));
+        dictionary.close();
+
+
+
         int aux=0;
         for(auto& i : this->diskController->info){
           if(get<0>(i) != atributo){
@@ -126,7 +183,7 @@ public:
             sizeRegistro += get<2>(i);
         }
 
-        for (int i=1; i<=45; i++) {
+        for (int i=bloqueInicial; i<=bloqueFinal; i++) {
           char * frame = bufferManager->getPageOfBuuferPool(i)->data;
           ifstream file;
           file.open("disk/bloque"+to_string(i)+".bin",ios::in | ios::binary);
@@ -168,14 +225,18 @@ public:
         }
     }
 
-    void showTable(string nameTable){
+    void showTable(){//cambios
         int numRegistros;
-        this->diskController->tableToVector(nameTable);
-        ifstream numRegistros_dictionary("dictionary/numRegistros.bin", std::ios::binary);
-        numRegistros_dictionary.read(reinterpret_cast<char*>(&numRegistros), sizeof(int));
-        numRegistros_dictionary.close(); 
+        this->diskController->tableToVector();
+        int posicion = this->diskController->buscarTablaenDictionary(this->diskController->nameTable);
+        posicion += 104;
+        fstream dictionary("dictionary/dictionary.bin",ios::in | ios::out | std::ios::binary);
+        dictionary.seekg(posicion);
+        dictionary.read(reinterpret_cast<char*>(&bloqueInicial), sizeof(int));
+        dictionary.read(reinterpret_cast<char*>(&bloqueFinal), sizeof(int));
+        dictionary.close();
 
-        for (int i = 1; i<=diskController->nTotalBloques; i++) {
+        for (int i = bloqueInicial; i<=bloqueFinal; i++) {
         mostrarPage(i); 
         }
     }
@@ -220,14 +281,21 @@ public:
     }
 
     int printUbicacionRegistro(int objetivo){
-        this->diskController->tableToVector("titanic");     
+        this->diskController->tableToVector();     
+        int posicion = this->diskController->buscarTablaenDictionary(this->diskController->nameTable);
+        posicion += 104;
+        fstream dictionary("dictionary/dictionary.bin",ios::in | ios::out | std::ios::binary);
+        dictionary.seekg(posicion);
+        dictionary.read(reinterpret_cast<char*>(&bloqueInicial), sizeof(int));
+        dictionary.read(reinterpret_cast<char*>(&bloqueFinal), sizeof(int));
+        dictionary.close();
 
         int sizeRegistro = 0;
         for(auto& i : this->diskController->info){
             sizeRegistro += get<2>(i);
         }
 
-        for (int i=1; i<=diskController->NumBLoquesEnUso; i++) {
+        for (int i=bloqueInicial; i<=bloqueFinal; i++) {
           int bloque = i-1;
           char * frame = bufferManager->getPageOfBuuferPool(i)->data;
           ifstream file;
@@ -272,15 +340,24 @@ public:
         }
         return 0;
     }
+    
     void deleteRegistro(int objetivo){
-        this->diskController->tableToVector("titanic");     
+        this->diskController->tableToVector();     
+
+        int posicion = this->diskController->buscarTablaenDictionary(this->diskController->nameTable);
+        posicion += 104;
+        fstream dictionary("dictionary/dictionary.bin",ios::in | ios::out | std::ios::binary);
+        dictionary.seekg(posicion);
+        dictionary.read(reinterpret_cast<char*>(&bloqueInicial), sizeof(int));
+        dictionary.read(reinterpret_cast<char*>(&bloqueFinal), sizeof(int));
+        dictionary.close();
 
         int sizeRegistro = 0;
         for(auto& i : this->diskController->info){
             sizeRegistro += get<2>(i);
         }
 
-        for (int i=1; i<=diskController->nTotalBloques; i++) {
+        for (int i=bloqueInicial; i<=bloqueFinal; i++) {
           bool SeEncontro = false;
           int bloque = i-1;
           char * frame = bufferManager->getPageOfBuuferPool(i)->data;
@@ -334,11 +411,11 @@ public:
                     file.close();
   
                     *reinterpret_cast<int*>(&frame[byte-4]) = 0;
+                    bufferManager->PinFrame(i);
                     ofstream save;
                     save.open("disk/bloque"+to_string(i)+".bin",ios::out | ios::binary);
                     save.write(frame,diskController->sizeBloque);
                     save.close();
-                    diskController->bloqueASector(i);
                     return;
                 }
                 else{
@@ -347,14 +424,20 @@ public:
               }
             }
           }
-
           file.close();
         }
     }
 
   void insertarRegistro(){
-    this->diskController->tableToVector("titanic");     
-
+    this->diskController->tableToVector();     
+        int posicion = this->diskController->buscarTablaenDictionary(this->diskController->nameTable);
+        posicion += 104;
+        fstream dictionary("dictionary/dictionary.bin",ios::in | ios::out | std::ios::binary);
+        dictionary.seekg(posicion);
+        dictionary.read(reinterpret_cast<char*>(&bloqueInicial), sizeof(int));
+        dictionary.read(reinterpret_cast<char*>(&bloqueFinal), sizeof(int));
+        dictionary.close();
+    //this->diskController->tableToVector("titanic");     
     int sizeRegistro = 0;
     for(auto& i : this->diskController->info){
       sizeRegistro += get<2>(i);
@@ -362,7 +445,7 @@ public:
 
     //cout<<1<<endl;
     int i;
-    for (i = 0; i<=diskController->nTotalBloques; i++) {
+    for (i = bloqueInicial; i<=bloqueFinal; i++) {
       char * frame = bufferManager->getPageOfBuuferPool(i)->data;
       ifstream file;
       file.open("disk/bloque"+to_string(i)+".bin",ios::in | ios::binary);
@@ -430,11 +513,11 @@ public:
                   }
               }
             }
+            bufferManager->PinFrame(i);
             ofstream save;
             save.open("disk/bloque"+to_string(i)+".bin",ios::out | ios::binary);
             save.write(frame,diskController->sizeBloque);
             save.close();
-            diskController->bloqueASector(i);
             return;
           }
           else {
@@ -493,10 +576,11 @@ public:
                   }
               }
             }
+
+            bufferManager->PinFrame(i-1);
             ofstream save;
             save.open("disk/bloque"+to_string(i-1)+".bin",ios::out | ios::binary);
             save.write(frame,diskController->sizeBloque);
             save.close();
-            diskController->bloqueASector(i-1);
   }
 };
